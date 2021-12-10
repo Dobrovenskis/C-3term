@@ -1,0 +1,9 @@
+*.exe
+*.txt
+*.cbp
+*.depend
+*.layout
+*.suo
+*.db
+*.o
+*.bin
