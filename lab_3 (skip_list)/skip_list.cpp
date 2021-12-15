@@ -1,7 +1,9 @@
-#include<iostream>
-#include<vector>
-#include <iterator>
-#include<cstdlib>
+#include <vector>
+#include <random>
+#include <iostream>
+#include <time.h>
+
+//using namespace std;
 
 bool rand_bool(float p)
 {
@@ -19,37 +21,30 @@ bool rand_bool(float p)
      return ret;
 }
 
-
 template <class T>
-struct Node
-{
-	T val;
-	//T height;
-	bool if_head;
-	//vector<Node*> next;
-	//vector<Node*> below;
-	Node* up;
-	Node* down;
-	Node* left;
-	Node* right;
+struct Node {
+public:
+    T val;
+    Node<T>* right;
+    Node<T>* left;
+    Node<T>* up;
+    Node<T>* down;
 
-	Node(T val): val(val), up(nullptr), left(nullptr), right(nullptr), down(nullptr), if_head(false){};
-	Node() :  up(nullptr), left(nullptr), right(nullptr), down(nullptr), if_head(false) {};
-	Node(const Node<T> &nd): val(nd.val), up(nd.up), left(nd.left), right(nd.right), down(nd.down) {};
+    Node(T val): val(val), right(nullptr), left(nullptr), up(nullptr), down(nullptr) {};
+    Node(): val(0), right(nullptr), left(nullptr), up(nullptr), down(nullptr) {};
 
-	/*
-	Node& operator = (const Node<T>& nod2)
-	{
-	    val = nod2.val;
-	    up = nod2.up;
-	    down = nod2.down;
-	    left = nod2.left;
-	    right = nod2.right;
-	}*/
+    friend std::ostream& operator << (std::ostream& ret, Node<T> const* nod2)
+    {
+        T inf = INFINITY;
+        if (nod2->val < inf && nod2->val > -inf )
+        {
+            ret << nod2->val;
+        }
+        return ret;
+    }
+
 };
 
-template <class T>
-class Skip_list;
 
 template<class T>
 class Skip_list_iterator : public std::iterator<std::bidirectional_iterator_tag, T>
@@ -58,7 +53,7 @@ private:
 	Node<T>* p_nod;
 
 public:
-	Skip_list_iterator(Node<T> p_nod) : p_nod(p_nod) {};
+	Skip_list_iterator(Node<T>* p_nod) : p_nod(p_nod) {};
 
 	Skip_list_iterator& operator++()
 	{
@@ -96,451 +91,223 @@ public:
 		}
 		return ret;
 	}
+
+	Node<T>* cheat_func()
+	{
+	    return p_nod;
+	}
 };
 
 
 template <class T>
-class Skip_list
-{
+class SkipList {
 private:
-	float prob;
-	unsigned len;
-	unsigned max_height = 1;
-	//std::vector<unsigned> vec_len;
-	Node<T>* head;
-	//friend class Skip_list_iterator<T> iter;
+    std::vector<Node<T>*> vec_heads;
+    int hight = 1;
+    int length=0;
+    float prob;
+    Skip_list_iterator<T>* it_begin;
+    Skip_list_iterator<T>* it_end;
 
 public:
-	Skip_list()
-	{
-		//vec_len = std::vector<unsigned>(0);
-		prob = 0.5;
-		max_height = 1;
-		head = nullptr;
 
-		//iter = Skip_list_iterator<T>(head);
-		// TODO: reverse_it
-	};
+    SkipList() : SkipList(0.5) {};
 
-	/*
-	Skip_list( SkipList<T> &sk2)
-	{
-		prob = sk2.prob;
-		len = sk2.len;
-		size = sk2.size;
-		max_height = sk2.max_height;
-		head = sk2.head;
-	};*/
+    SkipList(float prob): prob(prob)
+    {
+        srand(static_cast<unsigned int>
+        (time(NULL)));
 
-	Skip_list(Skip_list& sk2)
-	{
-		prob = sk2.prob;
-		head = sk2.head;
-		//iter = sk2.iter;
-	};
+        Node<T>* head = new Node<T>(-INFINITY);
+        Node<T>* end_first = new Node<T>(INFINITY);
 
-	Skip_list(float prob): prob(prob)
-	{
-	    head = nullptr;
-		//iter = Skip_list_iterator<T>(head);
-	};
+        head->right = end_first;
+        end_first->left = end_first; //todo delete
 
-	Skip_list(float prob, Node<T>* head, unsigned len): prob(prob), head(head), len(len)
-	{
-		//iter = Skip_list_iterator<T>(head);
-	};
+        vec_heads.push_back(head);
 
-	Skip_list_iterator<T> end()
-	{
-        return Skip_list_iterator<T>(nullptr);
+        Skip_list_iterator<T>* it_2 = new Skip_list_iterator<T>(head);
+        it_begin = it_2;
+        Skip_list_iterator<T>* it_3 = new Skip_list_iterator<T>(end_first);
+        it_end = it_3;
+    };
+
+    SkipList( SkipList<T> &sk2): SkipList()
+    {
+        auto Heads_sk2 = sk2.get_heads();
+        for(auto el : Heads_sk2)
+        {
+            Node<T>* push_node = new Node<T>();
+            push_node = el;
+            vec_heads.push_back(push_node);
+
+        }
+
+        hight = sk2.hight;
+        length = sk2.length;
+        prob = sk2.prob;
+    };
+
+
+
+    Node<T>* insert_on_level(T data, int level, Node<T>* Down)
+    {
+        Node<T>* ins_node = new Node<T>(data);
+        ins_node->down = Down;
+        Node<T>* head_level = new Node<T>();
+
+        head_level = vec_heads[level];
+
+        while (head_level->right != nullptr
+            && data > head_level->right->val)
+        {
+            head_level = head_level->right;
+        }
+
+        ins_node->left = head_level;
+        ins_node->right = head_level->right;
+        head_level->right = ins_node;
+
+        return ins_node;
     }
 
-	unsigned size()
-	{
-		return len;
-	}
+    void insert(T data)
+    {
 
-	bool empty()
-	{
-		bool ret = false;
-		if (head == nullptr)
-		{
-			ret = true;
-		}
-		return ret;
-	}
+        length++ ;
+        Node<T>* floor_node = insert_on_level(data, 0, nullptr);
 
+        int i = 1;
 
-
-	Skip_list_iterator<T>& find(T key)
-	{
-	    Skip_list_iterator<T> it;
-	    Node<T>* th_node = head;
-	    while(th_node -> right != nullptr && th_node -> down != nullptr)
+        for (; rand_bool(prob) && hight >= i -2; i++)
         {
-            if(th_node -> val == key)
+            if (hight < i + 1)
             {
-                it = Skip_list_iterator<T>(th_node);
-            }
-            else if(th_node -> right == nullptr)
-            {
-                th_node = th_node -> down;
-            }
-            else if((th_node -> right) -> val > key)
-            {
-                if(th_node -> down == nullptr)
-                {
-                    std::cout << "Net\n";
-                    it = end();
-                }
-                else
-                {
-                   th_node = th_node -> down;
-                }
+                hight += 1;
+                Node<T>* NewHead = new Node <T>(-INFINITY);
+                Node<T>* NewTail = new Node <T>(INFINITY);
+                NewHead->right = NewTail;
+                NewTail->left = NewHead;
 
+                vec_heads[i - 1]->up = NewHead;
+                NewHead -> down = vec_heads[i-1];
+                vec_heads.push_back(NewHead);
             }
-            else
-            {
-                th_node = th_node -> right;
-            }
+            Node <T>* N = insert_on_level(data, i, floor_node);
+            floor_node->up = N;
+            floor_node = N;
         }
-        return it;
-	}
 
-	unsigned count(T val)
-	{
-        Skip_list_iterator<T> it = find(val);
-        Node<T> th_node = *it;
-        unsigned colvo = 0;
+        return;
+    }
 
-        if(it == end())
+    Skip_list_iterator<T> search(T key)
+    {
+        Node <T>* toplevel;
+        toplevel = vec_heads[vec_heads.size() - 1];
+        Node<T>* pt = new Node<T>();
+        pt = toplevel;
+
+        while (pt != nullptr)
         {
-            colvo = 0;
-        }
-        else
-        {
-            while(th_node->down != nullptr)
-            {
-                th_node = th_node -> down;
+            if (pt->val == key) {
+            break;
             }
-
-            while(th_node->right->val = val)
-            {
-                colvo ++;
+            else if (key > pt->val && key >= pt->right->val) {
+            pt = pt->right;
+            }
+            else if (key > pt->val && key < pt->right->val) {
+            pt = pt->down;
             }
         }
 
-        return colvo;
+    Skip_list_iterator<T> iter(pt);
+    return iter;
+    }
 
-	}
 
-	Skip_list_iterator<T> lower_bound(T key)
-	{
-        Skip_list_iterator<T> it;
-	    Node<T>* th_node = head;
-	    while(th_node -> right != nullptr && th_node -> down != nullptr)
+    void ers_konkr(Node<T>* ers_node)
+    {
+        ers_node->left->right = ers_node -> right;
+        ers_node -> right ->left = ers_node ->left;
+        delete(ers_node);
+    }
+
+    void erarse(Skip_list_iterator<T> itr)
+    {
+        Node<T>* ers_node = itr.cheat_func();
+        while(ers_node -> down != nullptr)
         {
-            if(th_node -> right == nullptr)
-            {
-                th_node = th_node -> down;
-            }
-            else if((th_node -> right) -> val >= key)
-            {
-                if(th_node -> down == nullptr)
-                {
-                    it = Skip_list_iterator<T>(th_node -> right);
-                }
-                else
-                {
-                   th_node = th_node -> down;
-                }
-
-            }
-            else
-            {
-                th_node = th_node -> right;
-            }
-        }
-        return it;
-	}
-
-	Skip_list_iterator<T> upper_bound(T key)
-	{
-        Skip_list_iterator<T> it;
-	    Node<T>* th_node = head;
-	    while(th_node -> right != nullptr && th_node -> down != nullptr)
-        {
-            if(th_node -> right == nullptr)
-            {
-                th_node = th_node -> down;
-            }
-            else if((th_node -> right) -> val > key)
-            {
-                if(th_node -> down == nullptr)
-                {
-                    it = Skip_list_iterator<T>(th_node -> right);
-                }
-                else
-                {
-                   th_node = th_node -> down;
-                }
-
-            }
-            else
-            {
-                th_node = th_node -> right;
-            }
-        }
-        return it;
-	}
-
-	void clear() {}
-
-	void erase(Skip_list_iterator<T> it2)
-	{
-        Node<T> th_node = *it2;
-        if(th_node -> left != nullptr)
-        {
-            (th_node -> left) -> right = th_node -> right;
-            head = th_node;
-        }
-        if(th_node -> right != nullptr)
-        {
-            (th_node -> right) -> left = th_node -> left;
-        }
-
-        Node<T> th_node_save = th_node;
-        while(th_node -> up != nullptr)
-        {
-            th_node = th_node->up;
-            if(th_node -> left != nullptr)
-            {
-                (th_node -> left) -> right = th_node -> right;
-                head = th_node;
-            }
-            if(th_node -> right != nullptr)
-            {
-                (th_node -> right) -> left = th_node -> left;
-            }
-        }
-        while(th_node_save -> down != nullptr)
-        {
-            th_node_save = th_node_save->down;
-            if(th_node -> left != nullptr)
-            {
-                (th_node -> left) -> right = th_node -> right;
-            }
-            if(th_node -> right != nullptr)
-            {
-                (th_node -> right) -> left = th_node -> left;
-            }
-        }
-	}
-
-	void erase(Skip_list_iterator<T> itbeg, Skip_list_iterator<T> itend )
-	{
-        for(auto it = itbeg; it != itend; it ++)
-        {
-            erase(it);
-        }
-	}
-
-	void insert(T value)
-	{
-	    //std::cout << "d";
-
-        //th_val = th_node->val;
-        //std::cout << "d";
-        if(head != nullptr)
-        {
-            Node<T> th_node = *head;
-            std::cout << head -> down -> down -> down -> val;
-            while(th_node.down != nullptr)
-            {
-                //std::cout << th_node.down -> down -> down -> val;
-                th_node = *(th_node.down);
-            }
-        }
-        //std::cout << "d";
-        if(head != nullptr)
-        {
-            Node<T> th_node = *head;
-            //std::cout << "d";
-            if(head -> val < value)
-            {
-                //std::cout << "d";
-                while(true)//th_node -> right -> val < value)
-                {
-
-                    //th_node = th_node -> right;
-                    if(th_node.right == nullptr)
-                    {
-                        Node<T> ins_node(value);
-                        th_node.right = &ins_node;
-                        //std::cout << head -> right -> val;
-                        ins_node.left = &th_node;
-                        //std::cout << "d";
-                        //return;
-                        break;
-                    }
-                    else if(th_node.right->val < value)
-                    {
-                        //std::cout << "d";
-                        th_node = *th_node.right;
-                    }
-                    else
-                    {
-                        //std::cout << "d";
-                        break;
-                    }
-                }
-                Node<T> ins_node_0(value);
-                ins_node_0.right = th_node.right;
-                ins_node_0.left = &th_node;
-                th_node.right = &ins_node_0;
-                //std::cout << "lal";
-
-                int i = 0;
-                for(; rand_bool(prob) && (i < max_height - 1 ); i++)
-                {
-                    Node<T> ins_node_1(value);
-                    ins_node_0.up = &ins_node_1;
-                    ins_node_1.down = &ins_node_0;
-                    if(th_node.up == nullptr)
-                    {
-                        th_node = *th_node.left;
-                    }
-                    else
-                    {
-                        Node<T> th_node_floor = th_node;
-                        while(th_node_floor.right->val < value)
-                        {
-                            th_node_floor = *th_node_floor.right;
-                        }
-                        ins_node_1.right = th_node.right;
-                        ins_node_1.left = &th_node;
-                        th_node.right = &ins_node_1;
-                    }
-                    ins_node_0 = ins_node_1;
-                }
-                //std::cout << "i=" << max_height - 1;
-                if(i == max_height - 1 && rand_bool(prob))
-                {
-                    max_height ++;
-                    Node<T> new_head(head -> val);
-                    head->up = &new_head;
-                    new_head.down = head;
-
-                    Node<T> ins_node_end(value);
-                    ins_node_end.left = head;
-                    head->right = &ins_node_end;
-
-                    head = &new_head;
-                }
-            }
-            else
-            {
-                //std::cout << "d";
-                Node<T> ins_node(value);
-                th_node.left = &ins_node;
-                ins_node.right = &th_node;
-                for(int i = 0; i < max_height; i++)
-                {
-                    Node<T> ins_node_1(value);
-                    ins_node.up = &ins_node_1;
-                    ins_node_1.down = &ins_node;
-                    ins_node_1.right = th_node.up;
-                    th_node.up = &ins_node_1;
-                    ins_node = ins_node_1;
-                }
-                max_height ++;
-                Node<T> ins_node_1(value);
-                ins_node.up = &ins_node_1;
-                ins_node_1.down = &ins_node;
-                head = &ins_node_1;
-            }
-        }
-        else
-        {
-            //std::cout << "d";
-            //Node<T> ins_node(value);
-            //std::cout << "d";
-            //Node<T>* new_head = new Node<T>(value);//&ins_node;
-            Node<T> new_head(value);
-            //std::cout << silka->val;
-            Node<T> down_head(value);
-            new_head.down = &down_head;
-            down_head.up = &new_head;
-            //down_head.down = nullptr;
-            head = &new_head;//silka;
-            //std::cout << head->down -> down -> down<< "\n";
-            max_height = 2;
-            //std::cout << "\n\n" << head->down-> val << "\n\n";
-        }
-	}
-
-	void print()
-	{
-	    if(head == nullptr)
-        {
-            std::cout << "Empty";
-        }
-        else
-        {
-            std::cout << "\n\n" << head->down ->val << "\n\n";
-            Node<T>* th_node = head;
-            Node<T>* th_i_head = head;
-            //Node<T> th_node(*head);
-            //Node<T> th_i_head(*head);
-            std::cout << "\n\n" << head ->down ->val << "\n\n";
-            //std::cout << th_node.val;
-
-            for(int i = 0; i < max_height; i++)
-            {
-                //std::cout << (th_node.down -> right != nullptr);
-
-                while(th_node->right != nullptr)
-                {
-                    //std::cout << "allo";
-                    std::cout << th_node->val << " ";
-                    th_node = (th_node->right);
-                }
-                std::cout << th_node->val;
-
-                std::cout << "\n";
-                //std::cout << "\n\n" << head->down -> val << "\n\n";
-                th_i_head = (th_i_head->down);
-                //std::cout << "\n\nth " << head ->down ->val << " th\n\n";
-                //
-
-                th_node = th_i_head;
-            }
+            Node<T>* ers_node_down = ers_node->down;
+            ers_konkr(ers_node);
+             ers_node = ers_node_down;
 
         }
-	}
+        ers_konkr(ers_node);
+        length --;
+    }
 
+    int get_length()
+    {
+        return length;
+    }
 
+    void print()
+    {
+        for (int i = 0; i != vec_heads.size(); i++) {
+            Node<T>* pt = new Node<T>(-INFINITY);
+            pt = vec_heads[i];
+            while (pt != nullptr) {
+                std::cout << pt << " ";
+                pt = pt->right;
+            }
+            std::cout << "\n";
+        }
+    }
+
+    std::vector<Node<T>*> get_heads()
+    {
+        return vec_heads;
+    }
 };
 
-int main()
-{
-	/*
-	int s = 0;
 
-	for(int i = 0; i < 1000; i++)
+int main() {
+    SkipList<int> th_sl(0.3);
+
+    th_sl.insert(3);
+    th_sl.insert(2);
+    th_sl.insert(5);
+    th_sl.insert(8);
+    th_sl.insert(9);
+    th_sl.insert(4);
+    th_sl.insert(-5);
+    th_sl.insert(311);
+    th_sl.insert(0);
+    th_sl.insert(8);
+    th_sl.insert(11);
+    th_sl.insert(40);
+    for(int i = 20; i <= 40; i++)
     {
-        s += int(rand_bool(0.9));
+        th_sl.insert(i);
     }
-    std::cout << s;*/
+    th_sl.print();
 
-    Skip_list<int> skipList(0.5);
-    //skipList.print();
-    //std::cout << "\n \n";
-    skipList.insert(1);
-    //skipList.insert(2);
-    //skipList.insert(2);
-    //std::cout << "2";
-    //skipList.insert(2);
-    //skipList.insert(3);
-    skipList.print();
+
+    //Node<int> a = *(mySL.search(4));
+
+    std::cout << "\n search = " << *(th_sl.search(4)) << " \n";
+    Skip_list_iterator<int> it_th = th_sl.search(5);
+    //std::cout << "asd";
+
+    th_sl.erarse(it_th);
+    //mySl.erarse
+
+    std::cout << "\n Delete 5: \n";
+    th_sl.print();
+
+    std::cout << "\n";
+    std::cout << th_sl.get_length() ;
+
+    return 0;
 }
