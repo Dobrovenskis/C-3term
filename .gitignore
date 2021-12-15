@@ -7,3 +7,6 @@
 *.db
 *.o
 *.bin
+*.ipch
+*.json
+*.sqlite
